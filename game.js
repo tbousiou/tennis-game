@@ -2,11 +2,21 @@ var canvas;
 var canvasContext;
 var ballX = 50;
 var ballY = 50;
+var ballRadius = 10;
 var ballSpeedX = 10;
 var ballSpeedY = 4;
 
+var player1Score = 0;
+var player2Score = 0;
+
+const WIN_SCORE = 3;
+
+var showWinScreen = false;
+
 var paddle1Y = 250;
+var paddle2Y = 250;
 const PADDLE_HEIGHT = 100;
+const PADDLE_WIDTH = 5;
 
 function calculateMousePos(evt) {
 	var rect = canvas.getBoundingClientRect();
@@ -19,6 +29,15 @@ function calculateMousePos(evt) {
 	};
 }
 
+
+function handleMouseClick(evt) {
+	if(showWinScreen) {
+		player1Score = 0;
+		player2Score = 0;
+		showWinScreen = false;
+	}
+}
+
 window.onload = function() {
 	canvas = document.getElementById('gameCanvas');
 	canvasContext = canvas.getContext('2d');
@@ -29,23 +48,66 @@ window.onload = function() {
 			drawEverything();
 	}, 1000/framesPerSecond);
 
+	canvas.addEventListener('mousedown', handleMouseClick);
+
 	canvas.addEventListener('mousemove',
 		function(evt) {
 			var mousePos = calculateMousePos(evt);
 			paddle1Y = mousePos.y - (PADDLE_HEIGHT/2);
+			//paddle2Y = mousePos.y - (PADDLE_HEIGHT/2);
 		}
 	);
 
 }
 
 
+function ballReset() {
+	if(player1Score >= WIN_SCORE || player2Score >= WIN_SCORE) {
+		showWinScreen = true;
+	}
+	ballSpeedX = -ballSpeedX;
+	ballX = canvas.width/2;
+	ballY = canvas.height/2;
+}
+
+function rightPaddleMove() {
+	var paddle2YCenter = paddle2Y + PADDLE_HEIGHT/2;
+	if(paddle2YCenter < ballY - 35) {
+		paddle2Y += 6;	
+	} else if(paddle2YCenter > ballY + 35) {
+		paddle2Y -= 6;
+	}
+}
 
 function moveEverything() {
+		
+	rightPaddleMove();
+	
 	ballX += ballSpeedX;
-	if(ballX < 0 || ballX > canvas.width) {
-		ballSpeedX = -ballSpeedX;
-	}
 	ballY += ballSpeedY;
+	
+	if(ballX < 0) {
+		if(ballY > paddle1Y && ballY < paddle1Y + PADDLE_HEIGHT) {
+			ballSpeedX = -ballSpeedX;
+			var deltaY = ballY - (paddle1Y + PADDLE_HEIGHT/2);
+			ballSpeedY = deltaY * 0.35;
+		} else {
+			player2Score++;			
+			ballReset();
+		}
+	}
+	
+	if(ballX > canvas.width) {
+		if(ballY > paddle2Y && ballY < paddle2Y + PADDLE_HEIGHT) {
+			ballSpeedX = -ballSpeedX;
+			var deltaY = ballY - (paddle2Y + PADDLE_HEIGHT/2);
+			ballSpeedY = deltaY * 0.35	
+		} else {
+			player1Score++;			
+			ballReset();
+		}
+	}
+	
 	if(ballY < 0 || ballY > canvas.height) {
 		ballSpeedY = -ballSpeedY;
 	}
@@ -53,11 +115,34 @@ function moveEverything() {
 
 function drawEverything() {
 	// draw screen
-	colorRect(0, 0, canvas.width, canvas.height, 'black');	
+	colorRect(0, 0, canvas.width, canvas.height, 'black');
+	
+	// draw winning	
+	if(showWinScreen)	{
+		canvasContext.fillStyle = 'white';
+		if(player1Score >= WIN_SCORE) {
+			canvasContext.fillText("Player 1 Won", 350, 200);
+		} else {
+			canvasContext.fillText("Player 2 Won", 350, 200);
+		}		
+	
+		canvasContext.fillText("Click to continue", 350, 500);
+		return;
+	}
+	
+	drawNet();
+	
 	// draw left paddle	
-	colorRect(0, paddle1Y, 10, PADDLE_HEIGHT, 'white');	
+	colorRect(0, paddle1Y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');
+	// draw right paddle	
+	colorRect(canvas.width-PADDLE_WIDTH, paddle2Y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');		
 	// draw ball
-	colorCircle(ballX, ballY, 10, 'white');	
+	colorCircle(ballX, ballY, ballRadius, 'white');
+	// draw scores
+	canvasContext.fillText(player1Score, 100, 100);
+	canvasContext.fillText(player2Score, canvas.width-100, 100);
+
+	
 }
 
 function colorRect(leftX, topY, width, height, drawColor) {
@@ -70,4 +155,14 @@ function colorCircle(centerX, centerY, radius, drawColor) {
 	canvasContext.beginPath();
 	canvasContext.arc(centerX, centerY, radius, 0, Math.PI*2, true);
 	canvasContext.fill();
+}
+
+function drawNet() {
+	canvasContext.setLineDash([20, 15]);      
+	canvasContext.beginPath();
+  	canvasContext.moveTo(canvas.width/2, 0);
+  	canvasContext.lineTo(canvas.width/2, canvas.height);
+	canvasContext.lineWidth = 3;
+	canvasContext.strokeStyle = 'white';  
+	canvasContext.stroke();
 }
